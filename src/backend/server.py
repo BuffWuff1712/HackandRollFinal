@@ -9,7 +9,7 @@ app = Flask(__name__)
 CORS(app)  # Allow requests from React
 
 # Load YOLO model
-model = torch.hub.load('ultralytics/yolov5', 'custom', path='../models/exp6/weights/last.pt', force_reload=True)
+model = torch.hub.load('ultralytics/yolov5', 'custom', path='../models/exp8/weights/best.pt', force_reload=True)
 
 @app.route('/process_frame', methods=['POST'])
 def process_frame():

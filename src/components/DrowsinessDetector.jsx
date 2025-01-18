@@ -8,12 +8,19 @@ const DrowsinessDetector = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [status, setStatus] = useState(null);
   const [drowsyTime, setDrowsyTime] = useState(0);
-  const [currentAudio, setCurrentAudio] = useState(null); // Store the current audio file
+  const [currentAudio, setCurrentAudio] = useState(null);
+  const [playing, setPlaying] = useState(false); // Track if audio is playing
+  const [isMuted, setIsMuted] = useState(false); // Track mute state
 
-  const audioFiles = ['/music/ChineseGong.mp3', '/music/MetalPipes.mp3']; // List of audio files
+  const audioFiles = [
+    '/music/ChineseGong.mp3',
+    '/music/MetalPipes.mp3',
+    '/music/wop_wop.mp3',
+    '/music/rickroll.mp3',
+    '/music/funny_car_alarm.mp3',
+  ];
 
   useEffect(() => {
-    // Start the webcam when the component mounts
     const startVideo = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true });
@@ -28,63 +35,59 @@ const DrowsinessDetector = () => {
   }, []);
 
   useEffect(() => {
-    // Automate frame capture every 0.5 seconds
     const interval = setInterval(() => {
       captureFrame();
-    }, 500); // 0.5 seconds
+    }, 1000); // 1 second
 
-    return () => clearInterval(interval); // Clean up the interval on component unmount
-  }, []); // Empty dependency array ensures this runs once when the component mounts
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
-    // Play the audio if drowsy for more than 5 seconds
-    if (drowsyTime >= 5) {
+    if (!isMuted && drowsyTime >= 10 && !playing) {
       if (!currentAudio) {
-        // Randomly select an audio file
         const randomAudio = audioFiles[Math.floor(Math.random() * audioFiles.length)];
         setCurrentAudio(randomAudio);
       }
 
       if (audioRef.current) {
-        audioRef.current.pause(); // Ensure the audio stops before replaying
-        audioRef.current.currentTime = 0; // Reset the audio playback position
-        audioRef.current.play();
+        audioRef.current.play().then(() => {
+          setPlaying(true);
+        }).catch((err) => {
+          console.error('Audio playback error:', err);
+        });
       }
-    } else {
+    } else if ((drowsyTime < 5 || isMuted) && playing) {
       if (audioRef.current) {
         audioRef.current.pause();
-        audioRef.current.currentTime = 0; // Reset audio
-        setCurrentAudio(null); // Clear the current audio selection
+        audioRef.current.currentTime = 0;
       }
+      setPlaying(false);
+      setCurrentAudio(null);
     }
-  }, [drowsyTime]);
+  }, [drowsyTime, playing, isMuted]);
 
   const captureFrame = async () => {
     if (videoRef.current && canvasRef.current) {
       const video = videoRef.current;
       const canvas = canvasRef.current;
 
-      // Draw video frame to canvas
       const context = canvas.getContext('2d');
       context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-      // Convert canvas to image data (Base64 string)
       const frame = canvas.toDataURL('image/jpeg');
 
-      // Send frame to backend for processing
       try {
         setIsProcessing(true);
         const response = await axios.post('http://127.0.0.1:5000/process_frame', { frame });
         const detectionStatus = response.data;
 
-        // Update drowsy time if "Drowsy" is detected
         if (detectionStatus.status === 'Drowsy') {
-          setDrowsyTime((prevTime) => prevTime + 2); // Increment by 2 seconds
+          setDrowsyTime((prevTime) => prevTime + 2);
         } else {
-          setDrowsyTime(0); // Reset if not drowsy
+          setDrowsyTime(0);
         }
 
-        setStatus(detectionStatus); // Update detection status
+        setStatus(detectionStatus);
         setIsProcessing(false);
       } catch (err) {
         console.error('Error sending frame to backend:', err);
@@ -93,30 +96,50 @@ const DrowsinessDetector = () => {
     }
   };
 
+  const toggleMute = () => {
+    setIsMuted((prev) => !prev);
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+    setPlaying(false); // Reset playing state
+  };
+
   return (
     <div className="p-4 border rounded">
       <h2 className="text-lg font-bold mb-4">Drowsiness Detector</h2>
 
-      {/* Video feed */}
       <video ref={videoRef} autoPlay muted width="640" height="480" className="border"></video>
-
-      {/* Hidden canvas for frame capture */}
       <canvas ref={canvasRef} width="640" height="480" style={{ display: 'none' }}></canvas>
 
-      {/* Status */}
       {status && (
         <div className="mt-4 alert alert-danger">
           <strong>{status.status}</strong>: {status.advice}
         </div>
       )}
 
-      {/* Drowsiness Time Counter */}
       <div className="mt-4 alert alert-warning">
         <strong>Drowsiness Time:</strong> {drowsyTime} seconds
       </div>
 
-      {/* Audio for alert */}
-      {currentAudio && <audio ref={audioRef} src={currentAudio} preload="auto" />}
+      {currentAudio && (
+        <audio
+          ref={audioRef}
+          src={currentAudio}
+          preload="auto"
+          onEnded={() => {
+            setPlaying(false); // Reset playing state when audio ends
+          }}
+        />
+      )}
+
+      {/* Mute Toggle Button */}
+      <button
+        className={`mt-4 px-4 py-2 rounded ${isMuted ? 'bg-red-500' : 'bg-green-500'} text-white`}
+        onClick={toggleMute}
+      >
+        {isMuted ? 'Unmute' : 'Mute'}
+      </button>
     </div>
   );
 };

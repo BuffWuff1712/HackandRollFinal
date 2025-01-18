@@ -1,3 +1,4 @@
+import './styles/globals.css'
 import React, { useState } from 'react';
 import DrowsinessDetector from './components/DrowsinessDetector';
 import ScanHistory from './components/ScanHistory';
