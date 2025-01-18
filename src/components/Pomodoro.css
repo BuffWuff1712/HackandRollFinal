@@ -1,0 +1,31 @@
+.Pomorodo {
+    text-align: center;
+    font-family: Arial, sans-serif;
+    margin-top: 50px;
+  }
+  
+  .timer {
+    font-size: 48px;
+    font-weight: bold;
+    margin: 20px 0;
+  }
+  
+  .controls button {
+    padding: 10px 20px;
+    margin: 10px;
+    font-size: 16px;
+    cursor: pointer;
+  }
+  
+  button {
+    border: none;
+    border-radius: 5px;
+    background-color: #007bff;
+    color: white;
+    transition: background-color 0.3s;
+  }
+  
+  button:hover {
+    background-color: #0056b3;
+  }
+  
